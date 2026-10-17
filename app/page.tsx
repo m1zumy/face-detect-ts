@@ -1,11 +1,12 @@
 "use client"
 
-import React, {useRef, useEffect} from 'react'
+import React, {useRef, useEffect, useState} from 'react'
 import { FaceDetector, FilesetResolver } from '@mediapipe/tasks-vision'
 
 
 const Home = () => {
 
+  const [direcao, setDirecao] = useState("")
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -63,11 +64,24 @@ useEffect(() => {
         ctx.lineWidth = 4
         ctx.font = "24px sans-serif"
 
-        for (const { boundingBox, categories } of resultado.detections) {
+        for (const { boundingBox, categories, keypoints } of resultado.detections) {
           if(!boundingBox) continue
           ctx.strokeRect(boundingBox.originX, boundingBox.originY, boundingBox.width, boundingBox.height)
           ctx.fillText(`${Math.round(categories[0].score * 100)}%`, boundingBox.originX, boundingBox.originY - 8)
+          //keypoints
+          for (const {x , y } of keypoints ) {
+            ctx.beginPath()
+            ctx.arc(x * canvas.width, y * canvas.height, 6, 0, Math.PI * 2)
+            ctx.fill()
+          }
         }
+
+        const rosto = resultado.detections[0]
+        if (rosto) {
+          const [olho1, olho2, nariz] = rosto.keypoints
+          const desvio = (nariz.x - (olho1.x + olho2.x) / 2) / Math.abs(olho1.x - olho2.x)
+          setDirecao(desvio > 0.2 ? "Olhando para a esquerda" : desvio < -0.2 ? "Olhando para a direita" : "Olhando para frente")
+        } else setDirecao("Nenhum rosto")
         console.log(resultado.detections)
       }
       frameID = requestAnimationFrame(detect)
@@ -92,6 +106,7 @@ useEffect(() => {
     <video ref={videoRef} autoPlay playsInline muted className='block w-full'></video>
     <canvas ref={canvasRef} className='absolute inset-0 w-full h-full'></canvas>
     </div>
+    <p className='text-center text-xl mt-4'>{direcao}</p>
     </>
   )
 
